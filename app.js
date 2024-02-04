@@ -17,4 +17,13 @@ const displayWelcomeMessage = () => {
     }
 };
 
+const displayFinishMessage = () => {
+    const username = getUserName();
+    console.log(`Thank you for using File Manager, ${username}, goodbye!`);
+};
+
+process.on('exit', () => {
+    displayFinishMessage();
+});
+
 displayWelcomeMessage();
