@@ -38,8 +38,12 @@ const processUserInput = async (input) => {
         if (input === '.exit') {
             displayFinishMessage();
             process.exit(0);
+        } else if (input === 'up') {
+            await changeDirectory('..');
         } else if (input.startsWith('cd ')) {
             await changeDirectory(input.substring(3));
+        } else if (input === 'ls') {
+            await listDirectory();
         } else {
             console.log(`You entered: ${input}`);
             rl.prompt();
@@ -63,6 +67,23 @@ const changeDirectory = async (dir) => {
     }
     rl.prompt();
 };
+
+const listDirectory = async () => {
+    const currentPath = process.cwd();
+    const files = await fs.promises.readdir(currentPath);
+    const content = files.map((file, index) => {
+        const fullPath = path.join(currentPath, file);
+        const stats = fs.statSync(fullPath);
+        const type = stats.isDirectory() ? 'directory' : 'file';
+        return `${index}. ${file} (${type})`;
+    });
+
+    content.sort();
+    console.log('(index) | Name | Type');
+    console.log(content.join('\n'));
+
+    rl.prompt();
+}
 
 process.on('exit', () => {
     setImmediate(() => {
