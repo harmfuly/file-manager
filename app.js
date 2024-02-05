@@ -1,6 +1,14 @@
 import { homedir } from 'os';
+import url from 'url';
+import path from 'path';
+import { spawn } from 'child_process' ;
+import readline from 'readline';
+
 const args = process.argv.slice(2);
-let finished = false;
+const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+});
 
 const getUserName = () => {
     const usernameArg = args.find(arg => arg.startsWith('--username='));
@@ -12,30 +20,37 @@ const getUserName = () => {
 
 const displayWelcomeMessage = () => {
     const username = getUserName();
-    const currentDirectory = process.cwd();
         console.log(`Welcome to the File Manager, ${username}!`);
-        console.log(`You are currently in ${currentDirectory}`);
+        console.log(`You are currently in ${process.cwd()}`);
+        console.log('Type your commands below');
 };
 
 const displayFinishMessage = () => {
-    if (!finished) {
         const username = getUserName();
-        const currentDirectory = process.cwd();
         console.log(`Thank you for using File Manager, ${username}, goodbye!`);
         console.log(`You were in ${currentDirectory}`);
-        finished = true;
+        rl.close();
+};
+
+const processUserInput = (input) => {
+    if (input === '.exit') {
+        displayFinishMessage();
+        process.exit(0);
+    } else {
+        console.log(`You entered: ${input}`);
+        rl.prompt();
     }
 };
 
-process.on('beforeExit', () => {
+process.on('exit', () => {
     setImmediate(() => {
         displayFinishMessage();
-    });
+    })
 });
 
-process.on('exit', () => {
-    displayFinishMessage();
-});
-
-process.chdir(homedir());
 displayWelcomeMessage();
+rl.prompt();
+
+rl.on('line', (input) => {
+    processUserInput(input);
+});
