@@ -1,3 +1,4 @@
+import { homedir } from 'os';
 const args = process.argv.slice(2);
 let finished = false;
 
@@ -17,11 +18,13 @@ const displayWelcomeMessage = () => {
 };
 
 const displayFinishMessage = () => {
-    const username = getUserName();
-    const currentDirectory = process.cwd();
-    console.log(`Thank you for using File Manager, ${username}, goodbye!`);
-    console.log(`You were in ${currentDirectory}`);
-    finished = true;
+    if (!finished) {
+        const username = getUserName();
+        const currentDirectory = process.cwd();
+        console.log(`Thank you for using File Manager, ${username}, goodbye!`);
+        console.log(`You were in ${currentDirectory}`);
+        finished = true;
+    }
 };
 
 process.on('beforeExit', () => {
@@ -34,4 +37,5 @@ process.on('exit', () => {
     displayFinishMessage();
 });
 
+process.chdir(homedir());
 displayWelcomeMessage();
