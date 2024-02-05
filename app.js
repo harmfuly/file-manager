@@ -128,21 +128,40 @@ const renameFile = async (oldPath, newPath) => {
     rl.prompt();
 };
 
+const moveFile = async (sourcePath, destinationPath) => {
+    const sourceFullPath = path.resolve(process.cwd(), sourcePath);
+    const destinationFullPath = path.resolve(process.cwd(), destinationPath);
+
+    const destinationDir = path.dirname(destinationFullPath);
+    if (!fs.existsSync(destinationDir)) {
+        fs.mkdirSync(destinationDir, { recursive: true });
+    }
+
+    await copyFile(sourcePath, destinationPath);
+
+    await deleteFile(sourcePath);
+};
+
 const copyFile = async (sourcePath, destinationPath) => {
     const sourceFullPath = path.resolve(process.cwd(), sourcePath);
     const destinationFullPath = path.resolve(process.cwd(), destinationPath);
+
     const sourceStream = fs.createReadStream(sourceFullPath);
     const destinationStream = fs.createWriteStream(destinationFullPath);
-    sourceStream.pipe(destinationStream);
-    destinationStream.on('finish', () => {
-        console.log(`File ${sourcePath} copied to ${destinationPath}.`);
-        rl.prompt();
-    });
-};
 
-const moveFile = async (sourcePath, destinationPath) => {
-    await copyFile(sourcePath, destinationPath);
-    await deleteFile(sourcePath);
+    sourceStream.pipe(destinationStream);
+
+    return new Promise((resolve, reject) => {
+        destinationStream.on('finish', () => {
+            console.log(`File ${sourcePath} copied to ${destinationPath}.`);
+            resolve();
+        });
+
+        destinationStream.on('error', (error) => {
+            console.error(`Error copying file: ${error.message}`);
+            reject(error);
+        });
+    });
 };
 
 const deleteFile = async (filePath) => {
