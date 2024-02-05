@@ -1,8 +1,9 @@
 import { homedir } from 'os';
 import url from 'url';
 import path from 'path';
-import { spawn } from 'child_process' ;
+import { spawn } from 'child_process';
 import readline from 'readline';
+import fs from 'fs';
 
 const args = process.argv.slice(2);
 const rl = readline.createInterface({
@@ -22,24 +23,45 @@ const displayWelcomeMessage = () => {
     const username = getUserName();
         console.log(`Welcome to the File Manager, ${username}!`);
         console.log(`You are currently in ${process.cwd()}`);
-        console.log('Type your commands below');
+        console.log('Type your commands below:');
 };
 
 const displayFinishMessage = () => {
         const username = getUserName();
         console.log(`Thank you for using File Manager, ${username}, goodbye!`);
-        console.log(`You were in ${currentDirectory}`);
+        console.log(`You were in ${process.cwd()}`);
         rl.close();
 };
 
-const processUserInput = (input) => {
-    if (input === '.exit') {
-        displayFinishMessage();
-        process.exit(0);
-    } else {
-        console.log(`You entered: ${input}`);
+const processUserInput = async (input) => {
+    try {
+        if (input === '.exit') {
+            displayFinishMessage();
+            process.exit(0);
+        } else if (input.startsWith('cd ')) {
+            await changeDirectory(input.substring(3));
+        } else {
+            console.log(`You entered: ${input}`);
+            rl.prompt();
+        }
+    } catch (error) {
+        console.log(`Invalid input: ${error.message}`);
         rl.prompt();
     }
+};
+
+const changeDirectory = async (dir) => {
+    const currentPath = process.cwd();
+    const newPath = path.resolve(currentPath, dir);
+
+    if (newPath.startsWith(path.parse(currentPath).root)) {
+        await fs.promises.access(newPath, fs.constants.R_OK);
+        process.chdir(newPath);
+        console.log(`You are currently in ${process.cwd()}`);
+    } else {
+        console.error('Operation failed: Cannot go upper than root directory.');
+    }
+    rl.prompt();
 };
 
 process.on('exit', () => {
