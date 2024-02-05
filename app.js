@@ -44,6 +44,22 @@ const processUserInput = async (input) => {
             await changeDirectory(input.substring(3));
         } else if (input === 'ls') {
             await listDirectory();
+        } else if (input.startsWith('cat ')) {
+            const filePath = input.substring(4);
+            await catFile(filePath);
+        } else if (input.startsWith('add ')) {
+            await createEmptyFile(input.substring(4));
+        } else if (input.startsWith('rn ')){
+            const args = input.split(' ');
+            await renameFile(args[1], args[2]);
+        } else if (input.startsWith('cp ')) {
+            const args = input.split(' ');
+            await copyFile(args[1], args[2]);
+        } else if (input.startsWith('mv ')) {
+            const args = input.split(' ');
+            await moveFile(args[1], args[2]);
+        } else if (input.startsWith('rm ')) {
+            await deleteFile(input.substring(3));
         } else {
             console.log(`You entered: ${input}`);
             rl.prompt();
@@ -84,6 +100,57 @@ const listDirectory = async () => {
 
     rl.prompt();
 }
+
+const catFile = async (filePath) => {
+    try {
+        const fullPath = path.resolve(process.cwd(), filePath);
+        const data = await fs.promises.readFile(fullPath, 'utf-8');
+        console.log(`Content of ${filePath}:\n${data}`);
+        rl.prompt();
+    } catch (error) {
+        console.log(`Error reading file: ${error.message}`);
+        rl.prompt();
+    }
+};
+
+const createEmptyFile = async (fileName) => {
+    const fullPath = path.resolve(process.cwd(), fileName);
+    await fs.promises.writeFile(fullPath, '');
+    console.log(`File ${fileName} created.`);
+    rl.prompt();
+};
+
+const renameFile = async (oldPath, newPath) => {
+    const oldFullPath = path.resolve(process.cwd(), oldPath);
+    const newFullPath = path.resolve(process.cwd(), newPath);
+    await fs.promises.rename(oldFullPath, newFullPath);
+    console.log(`File ${oldPath} renamed to ${newPath}.`);
+    rl.prompt();
+};
+
+const copyFile = async (sourcePath, destinationPath) => {
+    const sourceFullPath = path.resolve(process.cwd(), sourcePath);
+    const destinationFullPath = path.resolve(process.cwd(), destinationPath);
+    const sourceStream = fs.createReadStream(sourceFullPath);
+    const destinationStream = fs.createWriteStream(destinationFullPath);
+    sourceStream.pipe(destinationStream);
+    destinationStream.on('finish', () => {
+        console.log(`File ${sourcePath} copied to ${destinationPath}.`);
+        rl.prompt();
+    });
+};
+
+const moveFile = async (sourcePath, destinationPath) => {
+    await copyFile(sourcePath, destinationPath);
+    await deleteFile(sourcePath);
+};
+
+const deleteFile = async (filePath) => {
+    const fullPath = path.resolve(process.cwd(), filePath);
+    await fs.promises.unlink(fullPath);
+    console.log(`File ${filePath} deleted.`);
+    rl.prompt();
+};
 
 process.on('exit', () => {
     setImmediate(() => {
