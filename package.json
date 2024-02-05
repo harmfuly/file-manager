@@ -1,0 +1,20 @@
+{
+    "name": "file-manager",
+    "version": "1.0.0",
+    "description": "This repository is the task File manager",
+    "engines": {
+      "node": ">=20.0.0"
+    },
+    "type": "module",
+    "scripts": {
+      "start": "node app.js"
+    },
+    "repository": {
+      "type": "git",
+      "url": "git+https://github.com/harmfuly/file-manager.git"
+    },
+    "bugs": {
+      "url": "https://github.com/harmfuly/file-manager/issues"
+    },
+    "homepage": "https://github.com/harmfuly/file-manager#readme"
+  }
