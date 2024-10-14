@@ -12,6 +12,7 @@ const rl = readline.createInterface({
     output: process.stdout
 });
 
+
 const getUserName = () => {
     const usernameArg = args.find(arg => arg.startsWith('--username='));
     if (usernameArg) {
@@ -34,8 +35,6 @@ const displayWelcomeMessage = () => {
 const displayFinishMessage = () => {
         const username = getUserName();
         console.log(`Thank you for using File Manager, ${username}, goodbye!`);
-        console.log(`You were in ${process.cwd()}`);
-        rl.close();
 };
 
 const processUserInput = async (input) => {
@@ -222,19 +221,6 @@ const deleteFile = async (filePath) => {
     rl.prompt();
 };
 
-process.on('exit', () => {
-    setImmediate(() => {
-        displayFinishMessage();
-    })
-});
-
-displayWelcomeMessage();
-rl.prompt();
-
-rl.on('line', (input) => {
-    processUserInput(input);
-});
-
 const getEOL = () => {
     const eol = os.EOL;
     console.log(`Default EOL: ${eol === '\n' ? 'LF' : 'CRLF'}`);
@@ -314,3 +300,14 @@ const decompressFile = async (sourcePath, destinationFilePath) => {
         console.error(`Error decompressing file: ${error.message}`);
     });
 };
+
+process.on('SIGINT', () => {
+    displayFinishMessage();
+    process.exit(0);
+});
+
+displayWelcomeMessage();
+rl.prompt();
+rl.on('line', (input) => {
+    processUserInput(input);
+});
