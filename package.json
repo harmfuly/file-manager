@@ -7,7 +7,7 @@
     },
     "type": "module",
     "scripts": {
-      "start": "node app.js"
+      "start": "node app.js --username=%npm_config_username%"
     },
     "repository": {
       "type": "git",
