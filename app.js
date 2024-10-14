@@ -91,16 +91,19 @@ const changeDirectory = async (dir) => {
 const listDirectory = async () => {
     const currentPath = process.cwd();
     const files = await fs.promises.readdir(currentPath);
+    
     const content = files.map((file, index) => {
         const fullPath = path.join(currentPath, file);
         const stats = fs.statSync(fullPath);
         const type = stats.isDirectory() ? 'directory' : 'file';
-        return `${index}. ${file} (${type})`;
+        return {
+            Name: file,
+            Type: type
+        };
     });
 
-    content.sort();
-    console.log('(index) | Name | Type');
-    console.log(content.join('\n'));
+    content.sort((a, b) => a.Name.localeCompare(b.Name));
+    console.table(content);
 
     rl.prompt();
 }
