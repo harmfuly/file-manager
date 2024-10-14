@@ -139,15 +139,31 @@ const moveFile = async (sourcePath, destinationPath) => {
     const sourceFullPath = path.resolve(process.cwd(), sourcePath);
     const destinationFullPath = path.resolve(process.cwd(), destinationPath);
 
-    const destinationDir = path.dirname(destinationFullPath);
+    const stats = await fs.promises.stat(sourceFullPath);
+
+    let finalDestinationPath;
+
+    if (stats.isDirectory()) {
+        console.log(`Error: Cannot move a directory to a directory. Use a file instead.`);
+        throw new Error('Cannot move a directory to a directory.');
+    } else {
+        const destinationStats = await fs.promises.stat(destinationFullPath).catch(() => null);
+        if (destinationStats && destinationStats.isDirectory()) {
+            finalDestinationPath = path.join(destinationFullPath, path.basename(sourceFullPath));
+        } else {
+            finalDestinationPath = destinationFullPath;
+        }
+    }
+
+    const destinationDir = path.dirname(finalDestinationPath);
     if (!fs.existsSync(destinationDir)) {
         fs.mkdirSync(destinationDir, { recursive: true });
     }
 
-    await copyFile(sourcePath, destinationPath);
-
+    await copyFile(sourceFullPath, finalDestinationPath);
     await deleteFile(sourcePath);
 };
+
 
 const copyFile = async (sourcePath, destinationPath) => {
     const sourceFullPath = path.resolve(process.cwd(), sourcePath);
