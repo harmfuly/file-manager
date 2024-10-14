@@ -1,9 +1,9 @@
-import { homedir } from 'os';
-import url from 'url';
 import path from 'path';
-import { spawn } from 'child_process';
 import readline from 'readline';
 import fs from 'fs';
+// import { createReadStream, createWriteStream } from 'fs';
+// import { createHash, createBrotliCompress, createBrotliDecompress } from 'zlib';
+import os from 'os';
 
 const args = process.argv.slice(2);
 const rl = readline.createInterface({
@@ -64,6 +64,16 @@ const processUserInput = async (input) => {
             await moveFile(args[1], args[2]);
         } else if (input.startsWith('rm ')) {
             await deleteFile(input.substring(3));
+        } else if (input === 'os --EOL') {
+            getEOL();
+        } else if (input === 'os --cpus') {
+            getCpusInfo();
+        } else if (input === 'os --homedir') {
+            getHomeDir();
+        } else if (input === 'os --username') {
+            getOsUserName();
+        } else if (input === 'os --architecture') {
+            getArchitecture();
         } else {
             console.log(`You entered: ${input}`);
             rl.prompt();
@@ -206,3 +216,32 @@ rl.prompt();
 rl.on('line', (input) => {
     processUserInput(input);
 });
+
+const getEOL = () => {
+    const eol = os.EOL;
+    console.log(`Default EOL: ${eol === '\n' ? 'LF' : 'CRLF'}`);
+};
+
+const getCpusInfo = () => {
+    const cpus = os.cpus();
+    const cpuInfo = cpus.map((cpu, index) => {
+        return `CPU ${index + 1}: ${cpu.model}, ${cpu.speed} MHz`;
+    });
+    console.log(`Total CPUs: ${cpus.length}`);
+    console.log(cpuInfo.join('\n'));
+};
+
+const getHomeDir = () => {
+    const homeDir = os.homedir();
+    console.log(`Home directory: ${homeDir}`);
+};
+
+const getOsUserName = () => {
+    const username = os.userInfo().username;
+    console.log(`Current user name: ${username}`);
+};
+
+const getArchitecture = () => {
+    const architecture = os.arch();
+    console.log(`CPU architecture: ${architecture}`);
+};
