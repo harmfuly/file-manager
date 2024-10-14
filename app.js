@@ -16,7 +16,11 @@ const getUserName = () => {
     if (usernameArg) {
         return usernameArg.split('=')[1];
     }
-    return null;
+    const usernameIndex = args.indexOf('--username');
+    if (usernameIndex !== -1 && args[usernameIndex + 1]) {
+        return args[usernameIndex + 1];
+    }
+    return 'Guest';
 }
 
 const displayWelcomeMessage = () => {
