@@ -1,8 +1,8 @@
 import path from 'path';
 import readline from 'readline';
 import fs from 'fs';
-// import { createReadStream, createWriteStream } from 'fs';
-// import { createHash, createBrotliCompress, createBrotliDecompress } from 'zlib';
+import { createReadStream, createWriteStream } from 'fs';
+import { createHash } from 'crypto';
 import os from 'os';
 
 const args = process.argv.slice(2);
@@ -74,6 +74,9 @@ const processUserInput = async (input) => {
             getOsUserName();
         } else if (input === 'os --architecture') {
             getArchitecture();
+        } else if (input.startsWith('hash ')) {
+            const filePath = input.substring(5);
+            await calculateHash(filePath);
         } else {
             console.log(`You entered: ${input}`);
             rl.prompt();
@@ -244,4 +247,22 @@ const getOsUserName = () => {
 const getArchitecture = () => {
     const architecture = os.arch();
     console.log(`CPU architecture: ${architecture}`);
+};
+
+const calculateHash = async (filePath) => {
+    const fullPath = path.resolve(process.cwd(), filePath);
+    const hash = createHash('sha256');
+    const stream = createReadStream(fullPath);
+
+    stream.on('data', (data) => {
+        hash.update(data);
+    });
+
+    stream.on('end', () => {
+        console.log(`Hash of ${filePath}: ${hash.digest('hex')}`);
+    });
+
+    stream.on('error', (error) => {
+        console.error(`Error calculating hash: ${error.message}`);
+    });
 };
