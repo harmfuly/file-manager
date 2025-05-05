@@ -5,6 +5,7 @@ import { createReadStream, createWriteStream } from 'fs';
 import { createHash } from 'crypto';
 import { createBrotliCompress, createBrotliDecompress } from 'zlib';
 import os from 'os';
+import { pipeline } from 'stream/promises';
 
 const args = process.argv.slice(2);
 const rl = readline.createInterface({
@@ -292,34 +293,33 @@ const calculateHash = async (filePath) => {
 const compressFile = async (sourcePath, destinationPath) => {
     const sourceFullPath = path.resolve(process.cwd(), sourcePath);
     const destinationFullPath = path.resolve(process.cwd(), destinationPath);
-    const sourceStream = createReadStream(sourceFullPath);
-    const destinationStream = createWriteStream(destinationFullPath);
-    const brotliCompress = createBrotliCompress();
 
-    sourceStream.pipe(brotliCompress).pipe(destinationStream).on('finish', () => {
+    try {
+        await pipeline(
+            createReadStream(sourceFullPath),
+            createBrotliCompress(),
+            createWriteStream(destinationFullPath)
+        );
         console.log(`File ${sourcePath} compressed to ${destinationPath}.`);
-    });
-
-    destinationStream.on('error', (error) => {
+    } catch (error) {
         console.error(`Error compressing file: ${error.message}`);
-    });
+    }
 };
 
-const decompressFile = async (sourcePath, destinationFilePath) => {
+const decompressFile = async (sourcePath, destinationPath) => {
     const sourceFullPath = path.resolve(process.cwd(), sourcePath);
-    const destinationFullPath = path.resolve(process.cwd(), destinationFilePath);
-    
-    const sourceStream = createReadStream(sourceFullPath);
-    const destinationStream = createWriteStream(destinationFullPath);
-    const brotliDecompress = createBrotliDecompress();
+    const destinationFullPath = path.resolve(process.cwd(), destinationPath);
 
-    sourceStream.pipe(brotliDecompress).pipe(destinationStream).on('finish', () => {
-        console.log(`File ${sourcePath} decompressed to ${destinationFilePath}.`);
-    });
-
-    destinationStream.on('error', (error) => {
+    try {
+        await pipeline(
+            createReadStream(sourceFullPath),
+            createBrotliDecompress(),
+            createWriteStream(destinationFullPath)
+        );
+        console.log(`File ${sourcePath} decompressed to ${destinationPath}.`);
+    } catch (error) {
         console.error(`Error decompressing file: ${error.message}`);
-    });
+    }
 };
 
 process.on('SIGINT', () => {
