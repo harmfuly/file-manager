@@ -51,6 +51,9 @@ const processUserInput = async (input) => {
         } else if (input.startsWith('cat ')) {
             const filePath = input.substring(4);
             await catFile(filePath);
+        }else if (input.startsWith('mkdir ')) {
+                const dirName = input.substring(6).trim();
+                await createDirectory(dirName);
         } else if (input.startsWith('add ')) {
             await createEmptyFile(input.substring(4));
         } else if (input.startsWith('rn ')){
@@ -145,6 +148,17 @@ const catFile = async (filePath) => {
         console.log(`Error reading file: ${error.message}`);
         rl.prompt();
     }
+};
+
+const createDirectory = async (dirName) => {
+    const fullPath = path.resolve(process.cwd(), dirName);
+    try {
+        await fs.promises.mkdir(fullPath);
+        console.log(`Directory ${dirName} created.`);
+    } catch (error) {
+        console.error(`Error creating directory: ${error.message}`);
+    }
+    rl.prompt();
 };
 
 const createEmptyFile = async (fileName) => {
