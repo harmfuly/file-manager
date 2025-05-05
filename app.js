@@ -31,6 +31,7 @@ const displayWelcomeMessage = () => {
         console.log(`Welcome to the File Manager, ${username}!`);
         console.log(`You are currently in ${process.cwd()}`);
         console.log('Type your commands below:');
+        console.log('To exit the file manager, press Ctrl+C');
 };
 
 const displayFinishMessage = () => {
