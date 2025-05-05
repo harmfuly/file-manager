@@ -230,8 +230,15 @@ const copyFile = async (sourcePath, destinationPath) => {
 
 const deleteFile = async (filePath) => {
     const fullPath = path.resolve(process.cwd(), filePath);
-    await fs.promises.unlink(fullPath);
-    console.log(`File ${filePath} deleted.`);
+    const stats = await fs.promises.stat(fullPath);
+
+    if (stats.isDirectory()) {
+        await fs.promises.rm(fullPath, { recursive: true, force: true });
+        console.log(`Directory ${filePath} deleted.`);
+    } else {
+        await fs.promises.unlink(fullPath);
+        console.log(`File ${filePath} deleted.`);
+    }
     rl.prompt();
 };
 
