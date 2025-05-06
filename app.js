@@ -1,0 +1,335 @@
+import path from 'path';
+import readline from 'readline';
+import fs from 'fs';
+import { createReadStream, createWriteStream } from 'fs';
+import { createHash } from 'crypto';
+import { createBrotliCompress, createBrotliDecompress } from 'zlib';
+import os from 'os';
+import { pipeline } from 'stream/promises';
+
+const args = process.argv.slice(2);
+const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout
+});
+
+
+const getUserName = () => {
+    const usernameArg = args.find(arg => arg.startsWith('--username='));
+    if (usernameArg) {
+        return usernameArg.split('=')[1];
+    }
+    const usernameIndex = args.indexOf('--username');
+    if (usernameIndex !== -1 && args[usernameIndex + 1]) {
+        return args[usernameIndex + 1];
+    }
+    return 'Guest';
+}
+
+const displayWelcomeMessage = () => {
+    const username = getUserName();
+        console.log(`Welcome to the File Manager, ${username}!`);
+        console.log(`You are currently in ${process.cwd()}`);
+        console.log('Type your commands below:');
+        console.log('To exit the file manager, press Ctrl+C');
+};
+
+const displayFinishMessage = () => {
+        const username = getUserName();
+        console.log(`Thank you for using File Manager, ${username}, goodbye!`);
+};
+
+const processUserInput = async (input) => {
+    try {
+        if (input === '.exit') {
+            displayFinishMessage();
+            process.exit(0);
+        } else if (input === 'up') {
+            await changeDirectory('..');
+        } else if (input.startsWith('cd ')) {
+            await changeDirectory(input.substring(3));
+        } else if (input === 'ls') {
+            await listDirectory();
+        } else if (input.startsWith('cat ')) {
+            const filePath = input.substring(4);
+            await catFile(filePath);
+        }else if (input.startsWith('mkdir ')) {
+                const dirName = input.substring(6).trim();
+                await createDirectory(dirName);
+        } else if (input.startsWith('add ')) {
+            await createEmptyFile(input.substring(4));
+        } else if (input.startsWith('rn ')){
+            const args = input.split(' ');
+            await renameFile(args[1], args[2]);
+        } else if (input.startsWith('cp ')) {
+            const args = input.split(' ');
+            await copyFile(args[1], args[2]);
+        } else if (input.startsWith('mv ')) {
+            const args = input.split(' ');
+            await moveFile(args[1], args[2]);
+        } else if (input.startsWith('rm ')) {
+            await deleteFile(input.substring(3));
+        } else if (input === 'os --EOL') {
+            getEOL();
+        } else if (input === 'os --cpus') {
+            getCpusInfo();
+        } else if (input === 'os --homedir') {
+            getHomeDir();
+        } else if (input === 'os --username') {
+            getOsUserName();
+        } else if (input === 'os --architecture') {
+            getArchitecture();
+        } else if (input.startsWith('hash ')) {
+            const filePath = input.substring(5);
+            await calculateHash(filePath);
+        } else if (input.startsWith('compress ')) {
+            const args = input.split(' ');
+            if (args.length < 3) {
+                console.log("Invalid input: Please provide both source and destination paths.");
+            } else {
+                await compressFile(args[1], args[2]);
+            }
+        } else if (input.startsWith('decompress ')) {
+            const args = input.split(' ');
+            if (args.length < 3) {
+                console.log("Invalid input: Please provide both source and destination paths.");
+            } else {
+                await decompressFile(args[1], args[2]);
+            }
+        } else {
+            console.log(`You entered: ${input}`);
+            rl.prompt();
+        }
+    } catch (error) {
+        console.log(`Invalid input: ${error.message}`);
+        rl.prompt();
+    }
+};
+
+const changeDirectory = async (dir) => {
+    const currentPath = process.cwd();
+    const newPath = path.resolve(currentPath, dir);
+
+    if (newPath.startsWith(path.parse(currentPath).root)) {
+        await fs.promises.access(newPath, fs.constants.R_OK);
+        process.chdir(newPath);
+        console.log(`You are currently in ${process.cwd()}`);
+    } else {
+        console.error('Operation failed: Cannot go upper than root directory.');
+    }
+    rl.prompt();
+};
+
+const listDirectory = async () => {
+    const currentPath = process.cwd();
+    const files = await fs.promises.readdir(currentPath);
+    
+    const content = files.map((file, index) => {
+        const fullPath = path.join(currentPath, file);
+        const stats = fs.statSync(fullPath);
+        const type = stats.isDirectory() ? 'directory' : 'file';
+        return {
+            Name: file,
+            Type: type
+        };
+    });
+
+    content.sort((a, b) => a.Name.localeCompare(b.Name));
+    console.table(content);
+
+    rl.prompt();
+}
+
+const catFile = async (filePath) => {
+    try {
+        const fullPath = path.resolve(process.cwd(), filePath);
+        const data = await fs.promises.readFile(fullPath, 'utf-8');
+        console.log(`Content of ${filePath}:\n${data}`);
+        rl.prompt();
+    } catch (error) {
+        console.log(`Error reading file: ${error.message}`);
+        rl.prompt();
+    }
+};
+
+const createDirectory = async (dirName) => {
+    const fullPath = path.resolve(process.cwd(), dirName);
+    try {
+        await fs.promises.mkdir(fullPath);
+        console.log(`Directory ${dirName} created.`);
+    } catch (error) {
+        console.error(`Error creating directory: ${error.message}`);
+    }
+    rl.prompt();
+};
+
+const createEmptyFile = async (fileName) => {
+    const fullPath = path.resolve(process.cwd(), fileName);
+    await fs.promises.writeFile(fullPath, '');
+    console.log(`File ${fileName} created.`);
+    rl.prompt();
+};
+
+const renameFile = async (oldPath, newPath) => {
+    const oldFullPath = path.resolve(process.cwd(), oldPath);
+    const newFullPath = path.resolve(process.cwd(), newPath);
+    await fs.promises.rename(oldFullPath, newFullPath);
+    console.log(`File ${oldPath} renamed to ${newPath}.`);
+    rl.prompt();
+};
+
+const moveFile = async (sourcePath, destinationPath) => {
+    const sourceFullPath = path.resolve(process.cwd(), sourcePath);
+    const destinationFullPath = path.resolve(process.cwd(), destinationPath);
+
+    const stats = await fs.promises.stat(sourceFullPath);
+
+    let finalDestinationPath;
+
+    if (stats.isDirectory()) {
+        console.log(`Error: Cannot move a directory to a directory. Use a file instead.`);
+        throw new Error('Cannot move a directory to a directory.');
+    } else {
+        const destinationStats = await fs.promises.stat(destinationFullPath).catch(() => null);
+        if (destinationStats && destinationStats.isDirectory()) {
+            finalDestinationPath = path.join(destinationFullPath, path.basename(sourceFullPath));
+        } else {
+            finalDestinationPath = destinationFullPath;
+        }
+    }
+
+    const destinationDir = path.dirname(finalDestinationPath);
+    if (!fs.existsSync(destinationDir)) {
+        fs.mkdirSync(destinationDir, { recursive: true });
+    }
+
+    await copyFile(sourceFullPath, finalDestinationPath);
+    await deleteFile(sourcePath);
+};
+
+
+const copyFile = async (sourcePath, destinationPath) => {
+    const sourceFullPath = path.resolve(process.cwd(), sourcePath);
+    const destinationFullPath = path.resolve(process.cwd(), destinationPath);
+
+    const sourceStream = fs.createReadStream(sourceFullPath);
+    const destinationStream = fs.createWriteStream(destinationFullPath);
+
+    sourceStream.pipe(destinationStream);
+
+    return new Promise((resolve, reject) => {
+        destinationStream.on('finish', () => {
+            console.log(`File ${sourcePath} copied to ${destinationPath}.`);
+            resolve();
+        });
+
+        destinationStream.on('error', (error) => {
+            console.error(`Error copying file: ${error.message}`);
+            reject(error);
+        });
+    });
+};
+
+const deleteFile = async (filePath) => {
+    const fullPath = path.resolve(process.cwd(), filePath);
+    const stats = await fs.promises.stat(fullPath);
+
+    if (stats.isDirectory()) {
+        await fs.promises.rm(fullPath, { recursive: true, force: true });
+        console.log(`Directory ${filePath} deleted.`);
+    } else {
+        await fs.promises.unlink(fullPath);
+        console.log(`File ${filePath} deleted.`);
+    }
+    rl.prompt();
+};
+
+const getEOL = () => {
+    const eol = os.EOL;
+    console.log(`Default EOL: ${eol === '\n' ? 'LF' : 'CRLF'}`);
+};
+
+const getCpusInfo = () => {
+    const cpus = os.cpus();
+    const cpuInfo = cpus.map((cpu, index) => {
+        return `CPU ${index + 1}: ${cpu.model}, ${cpu.speed} MHz`;
+    });
+    console.log(`Total CPUs: ${cpus.length}`);
+    console.log(cpuInfo.join('\n'));
+};
+
+const getHomeDir = () => {
+    const homeDir = os.homedir();
+    console.log(`Home directory: ${homeDir}`);
+};
+
+const getOsUserName = () => {
+    const username = os.userInfo().username;
+    console.log(`Current user name: ${username}`);
+};
+
+const getArchitecture = () => {
+    const architecture = os.arch();
+    console.log(`CPU architecture: ${architecture}`);
+};
+
+const calculateHash = async (filePath) => {
+    const fullPath = path.resolve(process.cwd(), filePath);
+    const hash = createHash('sha256');
+    const stream = createReadStream(fullPath);
+
+    stream.on('data', (data) => {
+        hash.update(data);
+    });
+
+    stream.on('end', () => {
+        console.log(`Hash of ${filePath}: ${hash.digest('hex')}`);
+    });
+
+    stream.on('error', (error) => {
+        console.error(`Error calculating hash: ${error.message}`);
+    });
+};
+
+const compressFile = async (sourcePath, destinationPath) => {
+    const sourceFullPath = path.resolve(process.cwd(), sourcePath);
+    const destinationFullPath = path.resolve(process.cwd(), destinationPath);
+
+    try {
+        await pipeline(
+            createReadStream(sourceFullPath),
+            createBrotliCompress(),
+            createWriteStream(destinationFullPath)
+        );
+        console.log(`File ${sourcePath} compressed to ${destinationPath}.`);
+    } catch (error) {
+        console.error(`Error compressing file: ${error.message}`);
+    }
+};
+
+const decompressFile = async (sourcePath, destinationPath) => {
+    const sourceFullPath = path.resolve(process.cwd(), sourcePath);
+    const destinationFullPath = path.resolve(process.cwd(), destinationPath);
+
+    try {
+        await pipeline(
+            createReadStream(sourceFullPath),
+            createBrotliDecompress(),
+            createWriteStream(destinationFullPath)
+        );
+        console.log(`File ${sourcePath} decompressed to ${destinationPath}.`);
+    } catch (error) {
+        console.error(`Error decompressing file: ${error.message}`);
+    }
+};
+
+process.on('SIGINT', () => {
+    displayFinishMessage();
+    process.exit(0);
+});
+
+displayWelcomeMessage();
+rl.prompt();
+rl.on('line', (input) => {
+    processUserInput(input);
+});
